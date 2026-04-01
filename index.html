@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CCTV Calculator Pro</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+<style>
+body {
+  font-family: Arial;
+  background: linear-gradient(135deg,#0f172a,#1e293b);
+  color:white;
+  padding:20px;
+}
+
+.container { max-width:900px; margin:auto; }
+
+.card {
+  background: rgba(255,255,255,0.05);
+  padding:15px;
+  border-radius:10px;
+  margin-top:10px;
+}
+
+input, select {
+  padding:8px;
+  margin:5px;
+  width:120px;
+}
+
+button {
+  padding:10px;
+  background:#38bdf8;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+}
+
+.result { font-weight:bold; }
+
+.safe { color:#22c55e; }
+.warn { color:#facc15; }
+.critical { color:#ef4444; }
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h2>🔐 Login</h2>
+<div class="card">
+<input id="user" placeholder="Username">
+<input id="pass" type="password" placeholder="Password">
+<button onclick="login()">Login</button>
+<p id="loginStatus"></p>
+</div>
+
+<div id="app" style="display:none;">
+
+<h1>📹 CCTV Calculator PRO</h1>
+
+<div class="card">
+Cameras <input id="cams" type="number"><br>
+Bitrate <input id="bitrate" type="number"><br>
+Hours <input id="hours" type="number" value="24"><br>
+Days <input id="days" type="number"><br>
+
+Compression
+<select id="comp">
+<option value="1">H264</option>
+<option value="0.7">H265</option>
+<option value="0.5">H265+</option>
+</select><br>
+
+HDD TB <input id="hdd">
+Count <input id="count"><br>
+
+<button onclick="calc()">Calculate</button>
+<button onclick="saveData()">Save</button>
+<button onclick="downloadPDF()">PDF</button>
+</div>
+
+<div class="card">
+<p>Bandwidth: <span id="bw" class="result"></span></p>
+<p>Storage: <span id="storage" class="result"></span></p>
+<p>Usable: <span id="usable" class="result"></span></p>
+<p>Backup Days: <span id="backup" class="result"></span></p>
+<p>Status: <span id="status" class="result"></span></p>
+</div>
+
+<div class="card">
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+// LOGIN (basic demo)
+function login(){
+ let u=document.getElementById("user").value;
+ let p=document.getElementById("pass").value;
+
+ if(u=="admin" && p=="1234"){
+   document.getElementById("app").style.display="block";
+   document.getElementById("loginStatus").innerText="Login success";
+ } else {
+   document.getElementById("loginStatus").innerText="Wrong login";
+ }
+}
+
+// CALCULATION
+function calc(){
+
+ let cams=+camsEl().value;
+ let bitrate=+bitrateEl().value;
+ let hours=+hoursEl().value;
+ let days=+daysEl().value;
+ let comp=+compEl().value;
+ let hdd=+hddEl().value;
+ let count=+countEl().value;
+
+ let bw=cams*bitrate;
+
+ let gb_day=(bitrate/8)*3600*hours/1024;
+ let total_tb=(gb_day*cams*days*comp)/1024;
+
+ let usable_tb=hdd*count*0.9;
+ let backup=(usable_tb*1024)/(gb_day*cams*comp);
+
+ let statusText="SAFE";
+ let cls="safe";
+
+ if(backup<days){ statusText="CRITICAL"; cls="critical";}
+ else if(backup<days*1.2){ statusText="WARNING"; cls="warn";}
+
+ set("bw",bw+" Mbps");
+ set("storage",total_tb.toFixed(2)+" TB");
+ set("usable",usable_tb.toFixed(2)+" TB");
+ set("backup",backup.toFixed(1)+" Days");
+
+ let st=document.getElementById("status");
+ st.innerText=statusText;
+ st.className="result "+cls;
+
+ drawChart(bw,total_tb,backup);
+}
+
+// GRAPH
+function drawChart(bw,storage,backup){
+
+ let ctx=document.getElementById("chart");
+
+ if(window.chart) window.chart.destroy();
+
+ window.chart=new Chart(ctx,{
+  type:'bar',
+  data:{
+    labels:["Bandwidth","Storage TB","Backup Days"],
+    datasets:[{
+      data:[bw,storage,backup]
+    }]
+  }
+ });
+}
+
+// SAVE (local storage)
+function saveData(){
+ let data={
+  cams:camsEl().value,
+  bitrate:bitrateEl().value,
+  hours:hoursEl().value,
+  days:daysEl().value
+ };
+ localStorage.setItem("cctv",JSON.stringify(data));
+ alert("Saved!");
+}
+
+// PDF
+function downloadPDF(){
+ html2pdf().from(document.body).save("report.pdf");
+}
+
+// helpers
+function set(id,val){ document.getElementById(id).innerText=val;}
+function camsEl(){return document.getElementById("cams");}
+function bitrateEl(){return document.getElementById("bitrate");}
+function hoursEl(){return document.getElementById("hours");}
+function daysEl(){return document.getElementById("days");}
+function compEl(){return document.getElementById("comp");}
+function hddEl(){return document.getElementById("hdd");}
+function countEl(){return document.getElementById("count");}
+
+</script>
+
+</body>
+</html>
